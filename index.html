@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>TimeSync-Flash</title>
+    <title>TimeSync-ggwave</title>
     <style>
         html, body {
             font-family: Arial, sans-serif;
@@ -31,7 +31,7 @@
         #title {
             color: white;
             /*background-color: black;*/
-            height: 10%
+            height: 10%;
             padding: 0;
             margin: 0;
         }
@@ -46,154 +46,90 @@
             font-size: 2rem;
             user-select: none;
         }
-        #warning {
-            font-size: 1rem;
-            color: white;
-            margin-top: 20px;
-        }
+
     </style>
 </head>
 <body id="body">
 
     
-    <a class="top-right" href="https://github.com/Troublebrewing/timesync-flash" target="_blank">
-        <img src="https://img.shields.io/github/stars/Troublebrewing/timesync-flash?style=social"
+    <a class="top-right" href="https://github.com/Troublebrewing/timesync-ggwave" target="_blank">
+        <img src="https://img.shields.io/github/stars/Troublebrewing/timesync-ggwave?style=social"
                 alt="GitHub Repo Stars"></a>
 
-    <h1 id="title">TimeSync-Flash</h1>
+    <h1 id="title">TimeSync-ggwave</h1>
     
-    <div id="button-div">
-        <div>Tap to set time</div>
-        <div id="warning">WARNING: FLASHING LIGHTS</div>
-    </div>       
-
-
-        
+    <div id="button-div">Tap to set time</div>     
     
+    <script type="text/javascript" src="https://ggwave-js.ggerganov.com/ggwave.js"></script>
+    <script type="text/javascript" src="ggwave.js"></script>
+    <script type='text/javascript'>
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        window.OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
 
-    
+        var context = null;
+        //var recorder = null;
 
-    
+        // the ggwave module instance
+        var ggwave = null;
+        var parameters = null;
+        var instance = null;
 
-    <script>
-        function togglebg() {
-            const body = document.body;
-            body.style.backgroundColor = body.style.backgroundColor === 'black' ? 'white' : 'black';
-            const buttonDiv = document.getElementById("button-div");
-            buttonDiv.style.color = buttonDiv.style.color === 'white' ? 'black' : 'white';
-            const title = document.getElementById("title");
-            title.style.color = title.style.color === 'white' ? 'black' : 'white';
-        }
+        // instantiate the ggwave instance
+        // ggwave_factory comes from the ggwave.js module
+        ggwave_factory().then(function(obj) {
+            ggwave = obj;
+        });
 
-        function sync(duration=20) {
-            const out = [];
-            for (let i = 0; i < duration; i++) {
-                out.push(1);
-            }
-            out.push(0);  // Indicates end of sync period
-            return out;
-        }
-			
-        function dataWord(data) {
-            const out = [];
-            for (let by = 0; by < 4; by++) {
-                const dataByte = (data >> (by*8)) & 0xFF;
-                for (let bi = 7; bi >= 0; bi--) {
-                    out.push((dataByte >> bi) & 1);
-                }
-            }
-            return out;
-        }
-        
-        function dataDateTime(dateTime) {
+        function OffsetDateTime(dateTime) {
             const tzOffset = dateTime.getTimezoneOffset() * 60;
-            const unixTime = ((dateTime.getTime() / 1000) - tzOffset) | 0;
-            return dataWord(unixTime)
+            const offsetunixTime = ((dateTime.getTime() / 1000) - tzOffset) | 0;
+            return offsetunixTime;
         }
 
-        function toFrames(bits) {
-            const out = [];
-            for (const bit of bits) {
-                out.push(bit ^ 1);
-                out.push(bit);
-            }
-            return out;
+        // helper function
+        function convertTypedArray(src, type) {
+            var buffer = new ArrayBuffer(src.byteLength);
+            var baseView = new src.constructor(buffer).set(src);
+            return new type(buffer);
         }
 
-        class Flasher {
-            constructor(bg_element, fg_elements, fps=30) {
-                this.fg_elements = fg_elements;
-                this.bg_element = bg_element;
-                this.frames = [];
-                this.nextFrame = 0;
-                this.period = 1000 / fps;
-            }
-            
-            _playFrame() {
-                if (performance.now() >= this.nextFrame) {
-                    this.nextFrame += this.period;
-                    
-                    const state = this.frames.shift();
-                    //this.element.style.backgroundColor = state ? "white" : "black";
+        // initialize audio context and ggwave
+        function init() {
+            if (!context) {
+                context = new AudioContext({sampleRate: 48000});
 
-                    //this.bg_element.style.backgroundColor = this.bg_element.style.backgroundColor === 'black' ? 'white' : 'black';
-                    this.bg_element.style.backgroundColor = this.bg_element.style.backgroundColor === 'white' ? 'black' : 'white';
-                    for (const fg_element of this.fg_elements) {
-                        fg_element.style.color = this.bg_element.style.backgroundColor;
-                    }
-                }
-                if (this.frames.length > 0) {
-                    requestAnimationFrame(this._playFrame.bind(this));
-                }else{
-                    this.resetFGElements();
-                }
-            }
-            
-            isPlaying() {
-                return this.frames.length != 0;
-            }
-
-            resetFGElements() {
-                for (const fg_element of this.fg_elements) {
-                    fg_element.style.color = 'white';
-                }
-                this.bg_element.style.backgroundColor = 'black';
-            }
-            
-            play(frames) {
-                if (!this.isPlaying()) {
-                    requestAnimationFrame(this._playFrame.bind(this));
-                }
-                this.frames = frames;
-                this.nextFrame = performance.now();
-            }
-            
-            stop(frames) {
-                this.play([0]);
+                parameters = ggwave.getDefaultParameters();
+                parameters.sampleRateInp = context.sampleRate;
+                parameters.sampleRateOut = context.sampleRate;
+                instance = ggwave.init(parameters);
             }
         }
 
-        function taphandler() {
-            const bg_element = document.body;
-            const fg_elements = [
-                document.getElementById("button-div"),
-                document.getElementById("title"),
-                document.getElementById("warning"),
-            ];
-			const flasher = new Flasher(bg_element, fg_elements);
-            
-            const syncLength = 20;
-            const syncDuration = flasher.period * 2 * (syncLength + 1);
-            const now = new Date();
-            const sync_data = sync(syncLength);
-            const offsetnow_data = dataDateTime(now);
+        //
+        // Tx
+        //
 
-            flasher.play(toFrames([...sync(syncLength), ...dataDateTime(now)]));
+        function onSend() {
+            init();
+
+            var now = new Date();
+            var offsetnowdata = OffsetDateTime(now).toString();
+
+            // generate audio waveform
+            var waveform = ggwave.encode(instance, offsetnowdata, ggwave.ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST, 10)
+
+            // play audio
+            var buf = convertTypedArray(waveform, Float32Array);
+            var buffer = context.createBuffer(1, buf.length, context.sampleRate);
+            buffer.getChannelData(0).set(buf);
+            var source = context.createBufferSource();
+            source.buffer = buffer;
+            source.connect(context.destination);
+            source.start(0);
         }
 
         document.getElementById("button-div")
-            .addEventListener("click", taphandler);
+            .addEventListener("click", onSend);
     </script>
-
 </body>
 </html>
