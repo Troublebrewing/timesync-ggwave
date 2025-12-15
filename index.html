@@ -34,6 +34,7 @@
             height: 10%;
             padding: 0;
             margin: 0;
+            font-size: 3rem;
         }
         #button-div {
             width: 100%;
@@ -45,6 +46,14 @@
             color: white;
             font-size: 2rem;
             user-select: none;
+        }
+        .general {
+            color: white;
+            line-height: 1rem;
+            font-size: 1rem;
+        }
+        h2 {
+            font-size: 3rem;
         }
 
     </style>
@@ -58,7 +67,11 @@
 
     <h1 id="title">TimeSync-ggwave</h1>
     
-    <div id="button-div">Tap to set time</div>     
+    <div id="button-div">
+        <h2>Tap to set time</h2>
+        <div class="general">Be sure to turn silent mode off and turn up your volume, then hold your device near the device you're setting the clock on. If you hear a tone, its working correctly.</div>  
+    </div>  
+     
     
     <script type="text/javascript" src="https://ggwave-js.ggerganov.com/ggwave.js"></script>
     <script type="text/javascript" src="ggwave.js"></script>
